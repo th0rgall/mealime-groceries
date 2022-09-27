@@ -1,6 +1,6 @@
 import { promisify } from 'util';
 import fs from 'fs/promises'
-import { fastify, FastifyInstance, RouteShorthandOptions } from 'fastify'
+import { fastify, FastifyInstance, preHandlerHookHandler, RouteShorthandOptions } from 'fastify'
 import { Server, IncomingMessage, ServerResponse } from 'http'
 import got, { Got } from 'got';
 import { Cookie, CookieJar, MemoryCookieStore } from 'tough-cookie';
@@ -91,7 +91,7 @@ async function login() {
     }
     catch (e) {
       console.log('cry');
-      // OK THE 404 was fake?? It does do the auth and adds an auth token... in reality there will be 302 towards /
+      // OK the 404 was fake?? It DOES do the auth and adds an auth token... in reality should be a 302 towards '/'
 
       // 404 is a good/expected response?
       // 401 probably not
@@ -108,8 +108,8 @@ async function login() {
 
   // there was a second hoop...
 
-  // from <meta name="csrf-token" content="irMaLcNFYPrif4jqDqSvRuPP0fxRKRq/3962eBkt81hNzlvRb6nGE5gaKTyALDxfWIeWEkT+r4WRJEjV+0IJfQ==" />
-  // "x-csrf-token": "irMaLcNFYPrif4jqDqSvRuPP0fxRKRq/3962eBkt81hNzlvRb6nGE5gaKTyALDxfWIeWEkT+r4WRJEjV+0IJfQ==",
+  // from <meta name="csrf-token" content="..." />
+  // "x-csrf-token": "......",
   let appText = await client(`${baseURL}/`).text();
   await saveCookieJar();
   const xcsrfMatch = /name="csrf-token" content="([^"]+)"/.exec(appText);
@@ -159,12 +159,37 @@ async function addItem(item: string, quantity?: string) {
 
 
 
+const authHandler: preHandlerHookHandler = (request, reply, done) => {
+  if (request.headers.authorization == null) {
+    console.log("request does not include auth header");
+    reply.code(403).send();
+    done();
+    return;
+  }
+
+  let match = /Bearer ([a-zA-Z0-9]+)/.exec(request.headers.authorization);
+  if (match && match[1] !== process.env.TOKEN) {
+    console.log("request does not include right auth header");
+    reply.code(403).send();
+    done();
+    return;
+  }
+  done();
+};
 const addOpts: RouteShorthandOptions = {
   schema: {
     body: {
       type: 'object',
       properties: {
         item: {
+          type: 'string'
+        }
+      }
+    },
+    headers: {
+      type: 'object',
+      properties: {
+        'Authorization': {
           type: 'string'
         }
       }
@@ -179,16 +204,46 @@ const addOpts: RouteShorthandOptions = {
         }
       }
     }
-  }
+  },
+  preHandler: authHandler
 }
 
 server.post('/add', addOpts, async (request, reply) => {
   try {
     let loggedIn = await login();
-    await addItem((request.body as { item: string }).item);
-    return { pong: 'it worked!' }
+    const item = (request.body as { item: string; }).item;
+    await addItem(item);
+    return { result: `${item} added!` }
   } catch (e) {
     console.log("didn't work", e)
+    reply.code(500).send({ "result": "didn't work" })
+  }
+})
+
+
+const resetOpts: RouteShorthandOptions = {
+  schema: {
+    response: {
+      200: {
+        type: 'object',
+        properties: {
+          pong: {
+            type: 'string'
+          }
+        }
+      }
+    }
+  },
+  preHandler: authHandler
+}
+
+server.post('/reset', resetOpts, async (_, reply) => {
+  try {
+    await fs.rm('./' + fileName)
+    await login();
+    return "OK"
+  } catch (e) {
+    return reply.code(500)
   }
 })
 

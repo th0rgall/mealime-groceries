@@ -2,3 +2,4 @@
 node_modules
 cookiejar.json
 *.js
+*.paw
