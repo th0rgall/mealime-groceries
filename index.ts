@@ -2,7 +2,7 @@ import { promisify } from 'util';
 import fs from 'fs/promises'
 import { fastify, FastifyInstance, preHandlerHookHandler, RouteShorthandOptions } from 'fastify'
 import { Server, IncomingMessage, ServerResponse } from 'http'
-import got, { Got } from 'got';
+import got, { Got, HTTPError } from 'got';
 import { Cookie, CookieJar, MemoryCookieStore } from 'tough-cookie';
 import * as dotenv from 'dotenv'
 dotenv.config()
@@ -26,6 +26,10 @@ let client: Got = got.extend({});
 async function saveCookieJar() {
   await fs.writeFile(fileName, JSON.stringify(await cookieJar.serialize()), 'utf-8')
 }
+
+const xcsrfError = "no xcsrf token found";
+
+let xcsrfToken: string | undefined;
 
 async function login() {
   try {
@@ -51,13 +55,13 @@ async function login() {
   if (await cookieStore.findCookie("mealime.com", "/", "auth_token") == null) {
     // Visit login page
     const loginPageText = await client(`${baseURL}/login`).text();
+    await saveCookieJar();
     const match = /name="authenticity_token" value="([^"]+)"/.exec(loginPageText);
     let authenticityToken;
     if (!match) {
       throw "no authenticity token found";
     }
     authenticityToken = match[1];
-    await saveCookieJar();
     try {
       // Log in
       // always produes "404 not found"
@@ -87,7 +91,6 @@ async function login() {
           "Sec-Fetch-User": "?1"
         }
       });
-      await saveCookieJar();
     }
     catch (e) {
       console.log('cry');
@@ -95,6 +98,7 @@ async function login() {
 
       // 404 is a good/expected response?
       // 401 probably not
+    } finally {
       await saveCookieJar();
     }
   }
@@ -107,26 +111,31 @@ async function login() {
   }
 
   // there was a second hoop...
+  // TODO: if things go wrong here we might not handle the error so well now
+  // make sure the reset also clears the xcsrf token
 
-  // from <meta name="csrf-token" content="..." />
-  // "x-csrf-token": "......",
-  let appText = await client(`${baseURL}/`).text();
-  await saveCookieJar();
-  const xcsrfMatch = /name="csrf-token" content="([^"]+)"/.exec(appText);
-  if (!xcsrfMatch) {
-    console.warn("no xcsrf token found");
-    throw "fail"
-  }
-  let xcsrfToken = xcsrfMatch[1];
-
-  // for further API requests
-  client = client.extend({
-    headers: {
-      "x-csrf-token": xcsrfToken,
-      "x-requested-with": "XMLHttpRequest",
+  if (xcsrfToken == null) {
+    // from <meta name="csrf-token" content="..." />
+    // "x-csrf-token": "......",
+    // after authentication, '<ng-view></ng-view>\n\n\n' will be returned by this!
+    let appText = await client(`${baseURL}/`).text();
+    await saveCookieJar();
+    const xcsrfMatch = /name="csrf-token" content="([^"]+)"/.exec(appText);
+    if (!xcsrfMatch) {
+      console.warn(xcsrfError);
+      throw xcsrfError;
     }
-  })
+    console.log("xsrf token found :)")
+    xcsrfToken = xcsrfMatch[1];
 
+    // for further API requests
+    client = client.extend({
+      headers: {
+        "x-csrf-token": xcsrfToken,
+        "x-requested-with": "XMLHttpRequest",
+      }
+    })
+  }
   console.log("we have auth!");
   return true;
 }
@@ -155,6 +164,7 @@ async function addItem(item: string, quantity?: string) {
     },
   }).text())
   await saveCookieJar();
+  return { result: `${item} added!` }
 }
 
 
@@ -209,14 +219,30 @@ const addOpts: RouteShorthandOptions = {
 }
 
 server.post('/add', addOpts, async (request, reply) => {
+  let item: string = '';
   try {
     let loggedIn = await login();
-    const item = (request.body as { item: string; }).item;
-    await addItem(item);
-    return { result: `${item} added!` }
-  } catch (e) {
-    console.log("didn't work", e)
-    reply.code(500).send({ "result": "didn't work" })
+    item = (request.body as { item: string; }).item;
+    return await addItem(item);
+  } catch (error) {
+    if (error == xcsrfError) {
+      // retry once
+      try {
+        await reset();
+        if (item != '') { return await addItem(item) } else {
+          reply.code(500).send({ "result": "weird parsing error" })
+          return;
+        }
+      } catch (e2) {
+        console.log("didn't work", e2)
+        reply.code(500).send({ "result": "didn't work" })
+        return;
+      }
+    } else if (error instanceof HTTPError) {
+      console.error(await error.response.body)
+      return;
+    }
+    reply.code(500).send({ "result": "unexpected error" })
   }
 })
 
@@ -237,10 +263,16 @@ const resetOpts: RouteShorthandOptions = {
   preHandler: authHandler
 }
 
+async function reset() {
+  await fs.rm('./' + fileName)
+  // clear cached headers etc. 
+  client = got.extend({});
+  await login();
+}
+
 server.post('/reset', resetOpts, async (_, reply) => {
   try {
-    await fs.rm('./' + fileName)
-    await login();
+    await reset();
     return "OK"
   } catch (e) {
     return reply.code(500)
