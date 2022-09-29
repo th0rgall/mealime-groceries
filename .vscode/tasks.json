@@ -1,0 +1,27 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "npm",
+			"script": "build:watch",
+			"problemMatcher": [],
+			"label": "npm: build:watch",
+			"detail": "tsc -w"
+		},
+		{
+			"label": "Development",
+			"type": "shell",
+			"dependsOn": [
+				"npm: build:watch",
+				"npm: start:watch",
+			]
+		},
+		{
+			"type": "npm",
+			"script": "start:watch",
+			"problemMatcher": [],
+			"label": "npm: start:watch",
+			"detail": "nodemon --ignore '*.json' index.js"
+		}
+	]
+}

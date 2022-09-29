@@ -1,6 +1,6 @@
 {
   "name": "mealime-groceries",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "",
   "type": "module",
   "exports": "./index.js",
@@ -9,8 +9,11 @@
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "tsc -w",
-    "start": "node index.js"
+    "build": "tsc",
+    "build:watch": "tsc -w",
+    "start:watch": "nodemon --ignore '*.json' --inspect index.js",
+    "start": "node index.js",
+    "docker:build": "docker buildx build --platform linux/amd64,linux/arm64 -t thorgalle/mealime:latest --push ."
   },
   "author": "",
   "license": "ISC",
@@ -23,6 +26,7 @@
   },
   "devDependencies": {
     "@types/node": "^18.7.23",
-    "@types/tough-cookie": "^4.0.2"
+    "@types/tough-cookie": "^4.0.2",
+    "nodemon": "^2.0.20"
   }
 }
