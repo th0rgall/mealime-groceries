@@ -2,26 +2,24 @@
 	"version": "2.0.0",
 	"tasks": [
 		{
-			"type": "npm",
-			"script": "build:watch",
-			"problemMatcher": [],
-			"label": "npm: build:watch",
-			"detail": "tsc -w"
-		},
-		{
-			"label": "Development",
-			"type": "shell",
-			"dependsOn": [
-				"npm: build:watch",
-				"npm: start:watch",
-			]
-		},
-		{
-			"type": "npm",
-			"script": "start:watch",
-			"problemMatcher": [],
-			"label": "npm: start:watch",
-			"detail": "nodemon --ignore '*.json' index.js"
+			"type": "deno",
+			"command": "run",
+			"args": [
+				"--allow-net=app.mealime.com,0.0.0.0:3000",
+				"--allow-env",
+				"--allow-read=./",
+				"--allow-write=./cookiejar.json",
+				"--watch",
+				"index.ts"
+			],
+			"problemMatcher": [
+				"$deno"
+			],
+			"label": "deno task: dev",
+			"detail": "deno run with permissions",
+			"group": {
+				"kind": "none",
+			}
 		}
 	]
 }

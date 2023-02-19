@@ -1,62 +1,86 @@
-import { promisify } from 'util';
-import fs from 'fs/promises'
-import { fastify, FastifyInstance, preHandlerHookHandler, RouteShorthandOptions } from 'fastify'
-import { Server, IncomingMessage, ServerResponse } from 'http'
-import got, { Got, HTTPError } from 'got';
-import { Cookie, CookieJar, MemoryCookieStore } from 'tough-cookie';
-import * as dotenv from 'dotenv'
-dotenv.config()
+import { serve } from "./deps.ts";
+import { addCookies, CookieJar } from "./deps.ts";
+import { extendClient } from "./deps.ts";
+import { z } from "./deps.ts";
 
-const server: FastifyInstance<
-  Server,
-  IncomingMessage,
-  ServerResponse> = fastify()
+const fileName = "cookiejar.json";
 
-
-const fileName = 'cookiejar.json';
-
-const baseURL = 'https://app.mealime.com'
-
-let cookieStore = new MemoryCookieStore();
+const baseURL = "https://app.mealime.com";
 
 let cookieJar: CookieJar;
 
-let client: Got = got.extend({});
+let client = fetch;
 
 async function saveCookieJar() {
-  await fs.writeFile(fileName, JSON.stringify(await cookieJar.serialize()), 'utf-8')
+  await Deno.writeTextFile(
+    fileName,
+    JSON.stringify(cookieJar),
+  );
 }
 
-const xcsrfError = "no xcsrf token found";
+class CsrfError extends Error {
+  constructor() {
+    super("No CSRF token found");
+  }
+}
 
-let xcsrfToken: string | undefined;
+let csrfToken: string | undefined;
 
+/**
+ * Login
+ * @returns {boolean} true when logged in
+ * @throws when auth failed
+ */
 async function login() {
   try {
-    await fs.stat(fileName);
-    cookieJar = await CookieJar.deserialize(await fs.readFile(fileName, "utf-8"), cookieStore);
-  }
-  catch (e: any) {
-    if (e.code === 'ENOENT') {
-      cookieJar = new CookieJar(cookieStore);
+    // Try loading the cookie jar from disk
+    cookieJar = new CookieJar(JSON.parse(
+      await Deno.readTextFile(fileName),
+    ));
+    console.log("Cookie jar found on disk, loaded");
+  } catch (error) {
+    if (error instanceof Deno.errors.NotFound) {
+      console.log("Creating a new cookie jar");
+      cookieJar = new CookieJar();
+    } else {
+      throw "Unknown cookie jar loading error";
     }
-    else {
-      throw "another cookie file error";
-    }
   }
-  client = client.extend({
-    cookieJar: cookieJar,
-    headers: {
-      'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/105.0.0.0 Safari/537.36',
+  // Initialize/reset HTTP client
+  client = extendClient({
+    fetch: addCookies({
+      fetch: fetch,
+      cookieJar: cookieJar,
+    }),
+    headers: new Headers({
+      "user-agent":
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/105.0.0.0 Safari/537.36",
       "pragma": "no-cache",
-    }
+    }),
+    // TODO: save cookies here?
+    // interceptors: {
+    //   response
+    // }
   });
+
+  const getAuthCookie = () =>
+    cookieJar.getCookie({
+      domain: "mealime.com",
+      path: "/",
+      name: "auth_token",
+    });
+
   // If no auth cookie yet
-  if (await cookieStore.findCookie("mealime.com", "/", "auth_token") == null) {
-    // Visit login page
-    const loginPageText = await client(`${baseURL}/login`).text();
+  if (getAuthCookie() == null) {
+    // Visit the login page to get the CSRF token
+    const loginPageText = await client(`${baseURL}/login`).then((r) =>
+      r.text()
+    );
     await saveCookieJar();
-    const match = /name="authenticity_token" value="([^"]+)"/.exec(loginPageText);
+    const match = /name="authenticity_token" value="([^"]+)"/.exec(
+      loginPageText,
+    );
+    // deno-lint-ignore prefer-const
     let authenticityToken;
     if (!match) {
       throw "no authenticity token found";
@@ -64,36 +88,38 @@ async function login() {
     authenticityToken = match[1];
     try {
       // Log in
-      // always produes "404 not found"
-      await client.post(`${baseURL}/sessions`, {
-        form: {
-          utf8: '✓',
+      // always produces "404 not found"
+      await client(`${baseURL}/sessions`, {
+        method: "post",
+        body: new URLSearchParams({
+          utf8: "✓",
           authenticity_token: authenticityToken,
-          email: process.env.MEALIME_EMAIL,
-          password: process.env.MEALIME_PASSWORD,
-          hp2: '',
-          remember_me: '1',
-          commit: 'Log in'
-        },
+          email: Deno.env.get("MEALIME_EMAIL") ?? "",
+          password: Deno.env.get("MEALIME_PASSWORD") ?? "",
+          hp2: "",
+          remember_me: "1",
+          commit: "Log in",
+        }),
         headers: {
           referer: "https://app.mealime.com/login",
           origin: "https://app.mealime.com",
           authority: "https://app.mealime.com",
           Connection: "keep-alive",
-          "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:101.0) Gecko/20100101 Firefox/101.0",
-          "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+          "User-Agent":
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:101.0) Gecko/20100101 Firefox/101.0",
+          "Accept":
+            "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
           "Accept-Language": "en-US,en;q=0.5",
           "Content-Type": "application/x-www-form-urlencoded",
           "Upgrade-Insecure-Requests": "1",
           "Sec-Fetch-Dest": "document",
           "Sec-Fetch-Mode": "navigate",
           "Sec-Fetch-Site": "same-origin",
-          "Sec-Fetch-User": "?1"
-        }
+          "Sec-Fetch-User": "?1",
+        },
       });
-    }
-    catch (e) {
-      console.log('cry');
+    } catch (_) {
+      console.log("cry");
       // OK the 404 was fake?? It DOES do the auth and adds an auth token... in reality should be a 302 towards '/'
 
       // 404 is a good/expected response?
@@ -103,193 +129,159 @@ async function login() {
     }
   }
 
-  // 2nd check
-
-  if (await cookieStore.findCookie("mealime.com", "/", "auth_token") == null) {
-    console.error("super fail, no auth possible")
-    throw "fail";
+  // Intermediary check for the auth cookie
+  if (getAuthCookie() == null) {
+    console.error("No auth possible, failed initial login");
+    throw new Error("Auth failed");
   }
 
-  // there was a second hoop...
   // TODO: if things go wrong here we might not handle the error so well now
-  // make sure the reset also clears the xcsrf token
+  // make sure the reset also clears the csrf token
 
-  if (xcsrfToken == null) {
-    // from <meta name="csrf-token" content="..." />
+  // The csrf-token is embedded on the page from which the XMLHTTPRequest happens (the homepage /#!, rendered by angular),
+  // and should be included into the x-csrf-token custom header.
+  // It seems unrelated to the XSRF-TOKEN cookie, which varies per request, and which is automatically handled by the cookie jar.
+  //
+  // The csrf-token seems to stay valid for several requests.
+  if (csrfToken == null) {
+    // Extract: from <meta name="csrf-token" content="..." />
     // "x-csrf-token": "......",
-    // after authentication, '<ng-view></ng-view>\n\n\n' will be returned by this!
-    let appText = await client(`${baseURL}/`).text();
+    const appText = await client(`${baseURL}/`).then((r) => r.text());
     await saveCookieJar();
-    const xcsrfMatch = /name="csrf-token" content="([^"]+)"/.exec(appText);
-    if (!xcsrfMatch) {
-      console.warn(xcsrfError);
-      throw xcsrfError;
+    const csrfMatch = /name="csrf-token" content="([^"]+)"/.exec(appText);
+    if (!csrfMatch) {
+      console.warn("No csrf token found");
+      throw new CsrfError();
     }
-    console.log("xsrf token found :)")
-    xcsrfToken = xcsrfMatch[1];
+    console.log("csrf token found :)");
+    csrfToken = csrfMatch[1];
 
-    // for further API requests
-    client = client.extend({
-      headers: {
-        "x-csrf-token": xcsrfToken,
+    // For further API requests
+    client = extendClient({
+      fetch: client,
+      headers: new Headers({
+        "x-csrf-token": csrfToken,
         "x-requested-with": "XMLHttpRequest",
-      }
-    })
+      }),
+    });
   }
-  console.log("we have auth!");
+  console.log("We have full auth!");
   return true;
 }
 
-async function addItem(item: string, quantity?: string) {
-  console.log(await client.post(`${baseURL}/api/grocery_list_items`, {
-    "form": {
-      "grocery_list_item[is_complete]": false,
-      "grocery_list_item[section_id]": 17,
-      "grocery_list_item[quantity]": '',
-      "grocery_list_item[ingredient_name]": item
-    },
-    "headers": {
-      "accept": "*/*",
-      "accept-language": "en-GB,en-US;q=0.9,en;q=0.8",
-      "cache-control": "no-cache",
-      "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
-      "pragma": "no-cache",
-      "sec-ch-ua": "\"Google Chrome\";v=\"105\", \"Not)A;Brand\";v=\"8\", \"Chromium\";v=\"105\"",
-      "sec-ch-ua-mobile": "?0",
-      "sec-ch-ua-platform": "\"macOS\"",
-      "sec-fetch-dest": "empty",
-      "sec-fetch-mode": "cors",
-      "sec-fetch-site": "same-origin",
-      "referer": "https://app.mealime.com/",
-    },
-  }).text())
+async function addItem(item: string) {
+  console.log(
+    await client(`${baseURL}/api/grocery_list_items`, {
+      method: "post",
+      body: new URLSearchParams({
+        "grocery_list_item[is_complete]": "false",
+        "grocery_list_item[section_id]": "17",
+        "grocery_list_item[quantity]": "",
+        "grocery_list_item[ingredient_name]": item,
+      }),
+      headers: {
+        "accept": "*/*",
+        "accept-language": "en-GB,en-US;q=0.9,en;q=0.8",
+        "cache-control": "no-cache",
+        "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
+        "pragma": "no-cache",
+        "sec-ch-ua":
+          '"Google Chrome";v="105", "Not)A;Brand";v="8", "Chromium";v="105"',
+        "sec-ch-ua-mobile": "?0",
+        "sec-ch-ua-platform": '"macOS"',
+        "sec-fetch-dest": "empty",
+        "sec-fetch-mode": "cors",
+        "sec-fetch-site": "same-origin",
+        "referer": "https://app.mealime.com/",
+      },
+    }).then((r) => r.text()),
+  );
   await saveCookieJar();
-  return { result: `${item} added!` }
+  return { result: `${item} added!` };
 }
 
-
-
-const authHandler: preHandlerHookHandler = (request, reply, done) => {
-  if (request.headers.authorization == null) {
-    console.log("request does not include auth header");
-    reply.code(403).send();
-    done();
-    return;
-  }
-
-  let match = /Bearer ([a-zA-Z0-9]+)/.exec(request.headers.authorization);
-  if (match && match[1] !== process.env.TOKEN) {
-    console.log("request does not include right auth header");
-    reply.code(403).send();
-    done();
-    return;
-  }
-  done();
-};
-const addOpts: RouteShorthandOptions = {
-  schema: {
-    body: {
-      type: 'object',
-      properties: {
-        item: {
-          type: 'string'
-        }
-      }
-    },
-    headers: {
-      type: 'object',
-      properties: {
-        'Authorization': {
-          type: 'string'
-        }
-      }
-    },
-    response: {
-      200: {
-        type: 'object',
-        properties: {
-          pong: {
-            type: 'string'
-          }
-        }
-      }
-    }
-  },
-  preHandler: authHandler
-}
-
-server.post('/add', addOpts, async (request, reply) => {
-  let item: string = '';
-  try {
-    let loggedIn = await login();
-    item = (request.body as { item: string; }).item;
-    return await addItem(item);
-  } catch (error) {
-    if (error == xcsrfError) {
-      // retry once
-      try {
-        await reset();
-        if (item != '') { return await addItem(item) } else {
-          reply.code(500).send({ "result": "weird parsing error" })
-          return;
-        }
-      } catch (e2) {
-        console.log("didn't work", e2)
-        reply.code(500).send({ "result": "didn't work" })
-        return;
-      }
-    } else if (error instanceof HTTPError) {
-      console.error(await error.response.body)
-      return;
-    }
-    reply.code(500).send({ "result": "unexpected error" })
-  }
-})
-
-
-const resetOpts: RouteShorthandOptions = {
-  schema: {
-    response: {
-      200: {
-        type: 'object',
-        properties: {
-          pong: {
-            type: 'string'
-          }
-        }
-      }
-    }
-  },
-  preHandler: authHandler
-}
+// Server
 
 async function reset() {
-  await fs.rm('./' + fileName)
-  // clear cached headers etc. 
-  client = got.extend({});
+  await Deno.remove("./" + fileName);
+  // clear cached headers etc.
+  client = fetch;
   await login();
 }
 
-server.post('/reset', resetOpts, async (_, reply) => {
+const handlePostItem = async (request: Request): Promise<Response> => {
   try {
-    await reset();
-    return "OK"
-  } catch (e) {
-    return reply.code(500)
+    await login();
+  } catch (_) {
+    return new Response("Login failed", { status: 500 });
   }
-})
 
-const start = async () => {
+  let item = "";
+
   try {
-    await server.listen({ host: '0.0.0.0', port: 3000 })
-
-    const address = server.server.address()
-    const port = typeof address === 'string' ? address : address?.port
-
-  } catch (err) {
-    server.log.error(err)
-    process.exit(1)
+    // Validate input
+    const itemResult = z.object({
+      item: z.string().min(1),
+    }).safeParse(await request.json());
+    if (itemResult.success) {
+      item = itemResult.data.item;
+      const addResult = await addItem(item);
+      return new Response(addResult.result, { status: 200 });
+    } else {
+      return new Response(itemResult.error.toString(), { status: 400 });
+    }
+  } catch (error) {
+    if (error instanceof CsrfError) {
+      // retry once
+      try {
+        await reset();
+        // We know that the validation did not return an error,
+        // so item is valid
+        await addItem(item);
+      } catch (resetError) {
+        console.error("Reset didn't work", resetError);
+        return new Response("Reset didn't work", { status: 500 });
+      }
+    }
+    console.error("Unexpected error");
+    return new Response("Unexpected error", { status: 500 });
   }
-}
+};
 
-start()
+const handler = async (request: Request): Promise<Response> => {
+  const path = new URL(request.url).pathname;
+
+  const authHeader = request.headers.get("authorization");
+
+  // Authorize
+  if (authHeader == null) {
+    console.log("Request does not include auth header");
+    return new Response("Not Authorized", { status: 403 });
+  }
+
+  const match = /Bearer ([a-zA-Z0-9]+)/.exec(authHeader);
+  if (match && match[1] !== Deno.env.get("TOKEN")) {
+    console.log("Request does not include the right auth header");
+    return new Response("Not Authorized", { status: 403 });
+  }
+
+  // Route to endpoint
+  if (request.method === "POST" && path === "/add") {
+    return await handlePostItem(request);
+  }
+
+  if (request.method === "POST" && path === "/reset") {
+    try {
+      await reset();
+      return new Response("OK", { status: 200 });
+    } catch (error) {
+      console.error("Error while resetting ", error);
+      return new Response("NOK", { status: 500 });
+    }
+  }
+  return new Response("Not Found", { status: 404 });
+};
+
+const port = 3000;
+console.log(`HTTP webserver running. Access it at: http://localhost:${port}/`);
+await serve(handler, { port });
