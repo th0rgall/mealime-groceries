@@ -27,23 +27,27 @@ class CsrfError extends Error {
 let csrfToken: string | undefined;
 
 /**
- * Login
+ * Login: resets the client to a pure fetch instance, then logs in and/or fetches the
+ * csrf-token, as required by the presence or non-presence of persisted cookies &
+ * csrfToken variables. Wraps the client with these auth credentials.
  * @returns {boolean} true when logged in
  * @throws when auth failed
  */
 async function login() {
-  try {
-    // Try loading the cookie jar from disk
-    cookieJar = new CookieJar(JSON.parse(
-      await Deno.readTextFile(fileName),
-    ));
-    console.log("Cookie jar found on disk, loaded");
-  } catch (error) {
-    if (error instanceof Deno.errors.NotFound) {
-      console.log("Creating a new cookie jar");
-      cookieJar = new CookieJar();
-    } else {
-      throw "Unknown cookie jar loading error";
+  if (cookieJar == null) {
+    try {
+      // Try loading the cookie jar from disk
+      cookieJar = new CookieJar(JSON.parse(
+        await Deno.readTextFile(fileName),
+      ));
+      console.log("Cookie jar found on disk, loaded");
+    } catch (error) {
+      if (error instanceof Deno.errors.NotFound) {
+        console.log("Creating a new cookie jar");
+        cookieJar = new CookieJar();
+      } else {
+        throw "Unknown cookie jar loading error";
+      }
     }
   }
   // Initialize/reset HTTP client
@@ -155,49 +159,55 @@ async function login() {
     }
     console.log("csrf token found :)");
     csrfToken = csrfMatch[1];
-
-    // For further API requests
-    client = extendClient({
-      fetch: client,
-      headers: new Headers({
-        "x-csrf-token": csrfToken,
-        "x-requested-with": "XMLHttpRequest",
-      }),
-    });
   }
+
+  // Add the csrf-token for the requests
+  client = extendClient({
+    fetch: client,
+    headers: new Headers({
+      "x-csrf-token": csrfToken,
+      "x-requested-with": "XMLHttpRequest",
+    }),
+  });
   console.log("We have full auth!");
   return true;
 }
 
 async function addItem(item: string) {
-  console.log(
-    await client(`${baseURL}/api/grocery_list_items`, {
-      method: "post",
-      body: new URLSearchParams({
-        "grocery_list_item[is_complete]": "false",
-        "grocery_list_item[section_id]": "17",
-        "grocery_list_item[quantity]": "",
-        "grocery_list_item[ingredient_name]": item,
-      }),
-      headers: {
-        "accept": "*/*",
-        "accept-language": "en-GB,en-US;q=0.9,en;q=0.8",
-        "cache-control": "no-cache",
-        "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
-        "pragma": "no-cache",
-        "sec-ch-ua":
-          '"Google Chrome";v="105", "Not)A;Brand";v="8", "Chromium";v="105"',
-        "sec-ch-ua-mobile": "?0",
-        "sec-ch-ua-platform": '"macOS"',
-        "sec-fetch-dest": "empty",
-        "sec-fetch-mode": "cors",
-        "sec-fetch-site": "same-origin",
-        "referer": "https://app.mealime.com/",
-      },
-    }).then((r) => r.text()),
-  );
+  const addResponse = await client(`${baseURL}/api/grocery_list_items`, {
+    method: "post",
+    body: new URLSearchParams({
+      "grocery_list_item[is_complete]": "false",
+      "grocery_list_item[section_id]": "17",
+      "grocery_list_item[quantity]": "",
+      "grocery_list_item[ingredient_name]": item,
+    }),
+    headers: {
+      "accept": "*/*",
+      "accept-language": "en-GB,en-US;q=0.9,en;q=0.8",
+      "cache-control": "no-cache",
+      "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
+      "pragma": "no-cache",
+      "sec-ch-ua":
+        '"Google Chrome";v="105", "Not)A;Brand";v="8", "Chromium";v="105"',
+      "sec-ch-ua-mobile": "?0",
+      "sec-ch-ua-platform": '"macOS"',
+      "sec-fetch-dest": "empty",
+      "sec-fetch-mode": "cors",
+      "sec-fetch-site": "same-origin",
+      "referer": "https://app.mealime.com/",
+    },
+  });
   await saveCookieJar();
-  return { result: `${item} added!` };
+  if (addResponse.status === 200) {
+    return { result: `${item} added!` };
+  } else {
+    const responseText = await addResponse.text();
+    console.error(
+      `/api/grocery_list_items API call failed: (${addResponse.status}) ${responseText}`,
+    );
+    throw new Deno.errors.PermissionDenied();
+  }
 }
 
 // Server
@@ -231,13 +241,18 @@ const handlePostItem = async (request: Request): Promise<Response> => {
       return new Response(itemResult.error.toString(), { status: 400 });
     }
   } catch (error) {
-    if (error instanceof CsrfError) {
+    if (
+      error instanceof CsrfError ||
+      error instanceof Deno.errors.PermissionDenied
+    ) {
       // retry once
       try {
+        console.log("Error while adding item, trying reset");
         await reset();
         // We know that the validation did not return an error,
         // so item is valid
-        await addItem(item);
+        const addResult = await addItem(item);
+        return new Response(addResult.result, { status: 200 });
       } catch (resetError) {
         console.error("Reset didn't work", resetError);
         return new Response("Reset didn't work", { status: 500 });
