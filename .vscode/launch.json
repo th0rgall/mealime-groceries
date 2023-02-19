@@ -10,11 +10,15 @@
             "type": "node",
             "program": "${workspaceFolder}/index.ts",
             "cwd": "${workspaceFolder}",
-            "runtimeExecutable": "/usr/local/bin/deno",
+            "runtimeExecutable": "deno",
             "runtimeArgs": [
                 "run",
                 "--inspect-wait",
-                "--allow-all"
+                "--allow-net=app.mealime.com,0.0.0.0:3000",
+                "--allow-env",
+                "--allow-read=.",
+                "--allow-write=cookiejar.json",
+                "index.ts"
             ],
             "attachSimplePort": 9229
         }
