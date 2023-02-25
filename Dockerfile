@@ -7,16 +7,17 @@ USER deno
 WORKDIR /app
 
 # Cache the dependencies as a layer.
+COPY src/deps.ts ./src/
 # Also copy the config file, so the import maps are understood.
 # https://deno.land/manual@v1.30.3/examples/manage_dependencies
-COPY deps.ts deno.jsonc ./
-RUN deno cache deps.ts
+COPY deno.jsonc ./ 
+RUN deno cache src/deps.ts
 
-# Copy source files
+# Copy other source files
 COPY . .
 
 # Compile the main app so that it doesn't need to be compiled each startup/entry.
-RUN deno cache index.ts
+RUN deno cache src/index.ts
 
 # Start
 CMD [ \
