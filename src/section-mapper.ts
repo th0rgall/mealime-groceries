@@ -85,14 +85,24 @@ export default (query: string) => {
 
   const queryWords = query.split(" ");
 
-  //  Find exact matchess
+  const singularWord = (word: string) =>
+    word.endsWith("s") ? word.substring(0, query.length - 1) : word;
+
+  // Find exact matchess
   let candidateSections = findSectionMatchesFor(query);
+
+  // Find singular query matches
+  candidateSections = [
+    ...candidateSections,
+    ...findSectionMatchesFor(singularWord(query)),
+  ];
 
   //  Find query word matches
   queryWords.forEach((word) => {
     candidateSections = [
       ...candidateSections,
       ...findSectionMatchesFor(word),
+      ...findSectionMatchesFor(singularWord(word)),
     ];
   });
 

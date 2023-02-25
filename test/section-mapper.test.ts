@@ -55,6 +55,13 @@ Deno.test("paprika powder to spices", () => {
   );
 });
 
+Deno.test("maps japalenos to produce (recorded as: jalapeno)", () => {
+  assertEquals(
+    sectionMapper("jalapenos"),
+    MEALIME_SECTIONS["Produce"],
+  );
+});
+
 // Unsupported case: black appears in 'black pepper' too
 // Deno.test("'black bnzea' maps to other", () => {
 //   assertEquals(

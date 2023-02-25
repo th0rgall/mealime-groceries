@@ -1,3 +1,4 @@
+import { MEALIME_SECTIONS } from "./constants.ts";
 import { addCookies, CookieJar } from "./deps.ts";
 import { extendClient } from "./deps.ts";
 import sectionMapper from "./section-mapper.ts";
@@ -54,13 +55,13 @@ export default class MealimeAPI {
         cookieJar = new CookieJar(JSON.parse(
           await Deno.readTextFile(fileName),
         ));
-        console.log("Cookie jar found on disk, loaded");
+        console.log("login: cookie jar found on disk, loaded");
       } catch (error) {
         if (error instanceof Deno.errors.NotFound) {
-          console.log("Creating a new cookie jar");
+          console.log("login: creating a new cookie jar");
           cookieJar = new CookieJar();
         } else {
-          throw "Unknown cookie jar loading error";
+          throw new Error("login: unknown cookie jar loading error");
         }
       }
     }
@@ -101,7 +102,7 @@ export default class MealimeAPI {
       // deno-lint-ignore prefer-const
       let authenticityToken;
       if (!match) {
-        throw "no authenticity token found";
+        throw new Error("no authenticity token found");
       }
       authenticityToken = match[1];
       try {
@@ -168,10 +169,10 @@ export default class MealimeAPI {
       await this.saveCookieJar();
       const csrfMatch = /name="csrf-token" content="([^"]+)"/.exec(appText);
       if (!csrfMatch) {
-        console.warn("No csrf token found");
+        console.warn("login: no csrf token found");
         throw new CsrfError();
       }
-      console.log("csrf token found :)");
+      console.log("login: csrf token found");
       this.csrfToken = csrfMatch[1];
     }
 
@@ -183,16 +184,23 @@ export default class MealimeAPI {
         "x-requested-with": "XMLHttpRequest",
       }),
     });
-    console.log("We have full auth!");
+    console.log("login: csrf token and cookies loaded");
     return true;
   }
 
   async addItem(item: string) {
+    const itemSection = sectionMapper(item);
+    console.log(
+      `api: adding item "${item}" to section "${
+        (Object.entries(MEALIME_SECTIONS).find(([_, v]) => v === itemSection) ||
+          ["undefined"])[0]
+      }"`,
+    );
     const addResponse = await client(`${baseURL}/api/grocery_list_items`, {
       method: "post",
       body: new URLSearchParams({
         "grocery_list_item[is_complete]": "false",
-        "grocery_list_item[section_id]": sectionMapper(item).toString(),
+        "grocery_list_item[section_id]": itemSection.toString(),
         "grocery_list_item[quantity]": "",
         "grocery_list_item[ingredient_name]": item,
       }),
