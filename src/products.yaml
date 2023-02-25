@@ -1,0 +1,140 @@
+# Database of products and their sections
+# Obviously non-exhaustive
+
+Produce:
+  # https://en.wikipedia.org/wiki/List_of_vegetables
+  - asparagus
+  - baby spinach
+  - brocco
+  - broccoli
+  - cabbage
+  - carrot
+  - cauliflower
+  - celery
+  - chives
+  - courgette
+  - collard greens
+  - endive
+  - fresh 
+  - fresh basil
+  - fresh cilantro
+  - fresh coriander
+  - fresh thyme
+  - garlic
+  - ginger
+  - ginger root
+  - jalapeno
+  - jalapeño
+  - kale
+  - lettuce
+  - onion
+  - paprika
+  - parsley
+  - potato
+  - pumpa
+  - pumpkin
+  - red beets
+  - red bell pepper
+  - rucola
+  - salad
+  - shallot
+  - spinach
+  - sweet potato
+  - zucchini squash
+  # https://en.wikipedia.org/wiki/List_of_culinary_fruits
+  - apples
+  - lemon
+  - bananas
+  - pears
+  - oranges
+  - grapes
+  - kiwis
+Bakery:
+  - bread
+Deli & Specialty Cheese:
+  - tofu
+  - tempeh
+Dairy, Cheese & Eggs:
+  - cheese
+  - yoghurt
+  - plant milk
+Nut Butters, Honey & Jams:
+  - peanut butter
+  - biscoff
+  - jam
+  - confituur
+Baking & Spices:
+  - black pepper
+  - chili powder
+  - cumin
+  - curry powder
+  - ground coriander
+  - ground cilantro
+  - ground cumin
+  - maple syrup
+  - paprika powder 
+  - pepper
+  - salt
+  - thyme
+Rice, Grains & Beans:
+  - rice
+  - beans
+  - chickpeas
+  - lentils
+  - grains
+  - corn flakes
+Canned & Jarred Goods:
+  - vegetable broth
+  - olives
+  - tomato puree
+  - tomato sauce
+  - artichoke
+  - corn
+Pasta & Sauces:
+  - pasta
+  - tortellini
+  - farfelle
+  - spaghetti
+  - penne
+  - linguine
+  - linguini
+Oils, Sauces & Condiments:
+  - apple cider vinegar
+  - extra virgin olive oil
+  - sunflower oil
+  - rapeseed oil
+  - coconut oil
+International:
+  - sesame seeds
+  - soy sauce
+Frozen:
+  - frozen corn
+  - frozen peas
+  - frozen spinach
+  - fake meat
+  - burger
+Coffee & Tea:
+  - tea
+  - coffee 
+Beverages:
+  - soda
+  - cola
+  - lemonade
+Wine, Beer & Spirits:
+  - beer
+  - wine
+Snacks:
+  - chips
+Candy:
+  - candy
+Nuts, Seeds & Dried Fruit:
+  - almonds
+  - dried cranberries
+  - raisins
+  - nut mix
+  - pine nuts
+  - nuts
+Household:
+  - trash bags
+  - green bags
+  - trash cans 

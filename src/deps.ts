@@ -2,6 +2,7 @@
 // see https://deno.land/std@0.177.0/dotenv/mod.ts
 // Seems to require process env access to all.
 import "std/dotenv/load.ts";
+export { parse as parseYAML } from "std/encoding/yaml.ts";
 export { serve } from "std/http/server.ts";
 export {
   CookieJar,

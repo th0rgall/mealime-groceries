@@ -1,5 +1,6 @@
 import { addCookies, CookieJar } from "./deps.ts";
 import { extendClient } from "./deps.ts";
+import sectionMapper from "./section-mapper.ts";
 
 const fileName = "cookiejar.json";
 
@@ -191,7 +192,7 @@ export default class MealimeAPI {
       method: "post",
       body: new URLSearchParams({
         "grocery_list_item[is_complete]": "false",
-        "grocery_list_item[section_id]": "17",
+        "grocery_list_item[section_id]": sectionMapper(item).toString(),
         "grocery_list_item[quantity]": "",
         "grocery_list_item[ingredient_name]": item,
       }),
