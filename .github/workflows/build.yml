@@ -20,7 +20,8 @@ jobs:
       contents: read
       packages: write
     steps:
-      # actions/checkout not needed, because docker-buildx does this
+      - name: Checkout repository
+        uses: actions/checkout@v3
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
       - name: Set up Docker Buildx
