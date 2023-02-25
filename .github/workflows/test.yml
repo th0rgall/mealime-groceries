@@ -1,0 +1,25 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  DENO_VERSION: "1.30.3"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Git Checkout Deno Module
+        uses: actions/checkout@v3
+      - name: Use Deno Version $DENO_VERSION
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: $DENO_VERSION
+      - name: Lint Deno Module
+        run: deno fmt --check
+      - name: Test Deno Module
+        run: deno test --allow-read --allow-env
