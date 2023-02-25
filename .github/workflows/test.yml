@@ -15,10 +15,10 @@ jobs:
     steps:
       - name: Git Checkout Deno Module
         uses: actions/checkout@v3
-      - name: Use Deno Version $DENO_VERSION
+      - name: Use Deno Version ${{ env.DENO_VERSION }}
         uses: denoland/setup-deno@v1
         with:
-          deno-version: $DENO_VERSION
+          deno-version: ${{ env.DENO_VERSION }}
       - name: Lint Deno Module
         run: deno fmt --check
       - name: Test Deno Module
