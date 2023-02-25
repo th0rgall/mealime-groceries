@@ -8,6 +8,9 @@ on:
     # Publish `v1.2.3` tags as releases.
     tags:
       - v*
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
 
 # https://docs.github.com/en/packages/managing-github-packages-using-github-actions-workflows/publishing-and-installing-a-package-with-github-actions#publishing-a-package-using-an-action
 jobs:
