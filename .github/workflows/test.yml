@@ -8,10 +8,11 @@ on:
 
 env:
   DENO_VERSION: "1.30.3"
+  DENO_DIR: ~/.deno-cache
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - name: Git Checkout Deno Module
         uses: actions/checkout@v3
@@ -21,5 +22,11 @@ jobs:
           deno-version: ${{ env.DENO_VERSION }}
       - name: Lint Deno Module
         run: deno fmt --check
-      - name: Test Deno Module
+      # https://deno.land/manual@v1.30.1/advanced/continuous_integration#caching-dependencies
+      - name: Cache Deno dependencies 
+        uses: actions/cache@v2
+        with:
+          path: ${{ env.DENO_DIR }}
+          key: ${{ hashFiles('deno.lock') }}
+      - name: Run Deno Tests
         run: deno test --allow-read --allow-env
