@@ -1,40 +1,8 @@
 import { MEALIME_SECTIONS, MealimeSectionName } from "./constants.ts";
-import { parseYAML, z } from "./deps.ts";
-
-type ProductsBySectionNameZodSchema = {
-  -readonly [key in keyof typeof MEALIME_SECTIONS]: z.ZodOptional<
-    z.ZodArray<
-      z.ZodString,
-      "atleastone"
-    >
-  >;
-};
-
-const productsBySectionNameZodSchema = z.object(
-  Object.fromEntries(
-    Object.entries(MEALIME_SECTIONS).map((
-      [k, _],
-    ) => [k, z.string().array().nonempty().optional()]),
-  ) as ProductsBySectionNameZodSchema,
-).strict();
-// Strict mode does not allow unrecognized keys
-
-type ProductsBySectionName = z.infer<typeof productsBySectionNameZodSchema>;
-
-let productDatabase:
-  | ProductsBySectionName
-  | undefined = undefined;
-
-if (!productDatabase) {
-  // Parse if unparsed yet
-  const yamlDatabaseObject = parseYAML(
-    Deno.readTextFileSync("./src/products.yaml"),
-  );
-  productDatabase = productsBySectionNameZodSchema.parse(yamlDatabaseObject);
-}
+import loadProducts from "./product-loader.ts";
 
 const productsBySectionId = Object.fromEntries(
-  Object.entries(productDatabase).map((
+  Object.entries(loadProducts()).map((
     [sectionName, products],
   ) => // the casts should work, because due to the .strict() option, sectionName must be a valid section.
   [MEALIME_SECTIONS[sectionName as MealimeSectionName], products]),
