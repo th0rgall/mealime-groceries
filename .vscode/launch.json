@@ -1,39 +1,39 @@
 {
-    // Use IntelliSense to learn about possible attributes.
-    // Hover to view descriptions of existing attributes.
-    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
-    "version": "0.2.0",
-    "configurations": [
-        {
-            "request": "launch",
-            "name": "Launch Program",
-            "type": "node",
-            "program": "${workspaceFolder}/src/index.ts",
-            "cwd": "${workspaceFolder}",
-            "runtimeExecutable": "deno",
-            "runtimeArgs": [
-                "run",
-                "--inspect-wait",
-                "--allow-net=app.mealime.com,0.0.0.0:3000",
-                "--allow-env",
-                "--allow-read=.",
-                "--allow-write=cookiejar.json",
-                "src/index.ts"
-            ],
-            "attachSimplePort": 9229
-        },
-        {
-            "request": "launch",
-            "name": "Debug tests",
-            "type": "node",
-            "cwd": "${workspaceFolder}",
-            "runtimeExecutable": "deno",
-            "runtimeArgs": [
-                "test",
-                "--allow-all",
-                "--inspect-brk",
-            ],
-            "attachSimplePort": 9229
-        }
-    ]
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "request": "launch",
+      "name": "Launch Program",
+      "type": "node",
+      "program": "${workspaceFolder}/src/index.ts",
+      "cwd": "${workspaceFolder}",
+      "runtimeExecutable": "deno",
+      "runtimeArgs": [
+        "run",
+        "--inspect-wait",
+        "--allow-net=app.mealime.com,0.0.0.0:3000",
+        "--allow-env",
+        "--allow-read=.",
+        "--allow-write=cookiejar.json",
+        "src/index.ts"
+      ],
+      "attachSimplePort": 9229
+    },
+    {
+      "request": "launch",
+      "name": "Debug tests",
+      "type": "node",
+      "cwd": "${workspaceFolder}",
+      "runtimeExecutable": "deno",
+      "runtimeArgs": [
+        "test",
+        "--allow-all",
+        "--inspect-brk"
+      ],
+      "attachSimplePort": 9229
+    }
+  ]
 }

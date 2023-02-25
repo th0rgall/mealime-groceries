@@ -1,10 +1,10 @@
 {
-    "imports": {
-        "std/": "https://deno.land/std@0.177.0/"
-    },
-    "tasks": {
-        "dev": "deno run --watch --allow-net=app.mealime.com,0.0.0.0:3000 --allow-env --allow-read=./ --allow-write=./cookiejar.json src/index.ts",
-        "build:local": "docker build --platform linux/arm64/v8 -t thorgalle/mealime:latest .",
-        "build:push": "docker buildx build --platform linux/amd64,linux/arm64 -t thorgalle/mealime:latest --push ."
-    }
+  "imports": {
+    "std/": "https://deno.land/std@0.177.0/"
+  },
+  "tasks": {
+    "dev": "deno run --watch --allow-net=app.mealime.com,0.0.0.0:3000 --allow-env --allow-read=./ --allow-write=./cookiejar.json src/index.ts",
+    "build:local": "docker build --platform linux/arm64/v8 -t thorgalle/mealime:latest .",
+    "build:push": "docker buildx build --platform linux/amd64,linux/arm64 -t thorgalle/mealime:latest --push ."
+  }
 }

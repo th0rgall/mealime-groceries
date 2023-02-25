@@ -1,25 +1,25 @@
 {
-	"version": "2.0.0",
-	"tasks": [
-		{
-			"type": "deno",
-			"command": "run",
-			"args": [
-				"--allow-net=app.mealime.com,0.0.0.0:3000",
-				"--allow-env",
-				"--allow-read=./",
-				"--allow-write=./cookiejar.json",
-				"--watch",
-				"src/index.ts"
-			],
-			"problemMatcher": [
-				"$deno"
-			],
-			"label": "deno task: dev",
-			"detail": "deno run with permissions",
-			"group": {
-				"kind": "none",
-			}
-		}
-	]
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "type": "deno",
+      "command": "run",
+      "args": [
+        "--allow-net=app.mealime.com,0.0.0.0:3000",
+        "--allow-env",
+        "--allow-read=./",
+        "--allow-write=./cookiejar.json",
+        "--watch",
+        "src/index.ts"
+      ],
+      "problemMatcher": [
+        "$deno"
+      ],
+      "label": "deno task: dev",
+      "detail": "deno run with permissions",
+      "group": {
+        "kind": "none"
+      }
+    }
+  ]
 }
