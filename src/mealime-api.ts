@@ -17,6 +17,10 @@ export class CsrfError extends Error {
   }
 }
 
+export const splitItems = (items: string) => {
+  return items.split(/,|and/).map((s) => s.trim());
+};
+
 export default class MealimeAPI {
   private readonly email: string;
   private readonly password: string;
@@ -186,6 +190,21 @@ export default class MealimeAPI {
     });
     console.log("login: csrf token and cookies loaded");
     return true;
+  }
+
+  /**
+   * Adds item based on the given query, which can include the words "and", or a comma,
+   * to split different items to add.
+   */
+  async addQuery(query: string) {
+    const items = splitItems(query);
+    let innerResults = "";
+    for (const item of items) {
+      // Intentionally await in for, to emulate slow human behavior
+      const innerResult = await this.addItem(item);
+      innerResults += "\n" + innerResult.result;
+    }
+    return { result: innerResults };
   }
 
   async addItem(item: string) {

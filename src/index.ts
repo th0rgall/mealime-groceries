@@ -14,7 +14,7 @@ const handlePostItem = async (request: Request): Promise<Response> => {
     return new Response("Login failed", { status: 500 });
   }
 
-  let item = "";
+  let query = "";
 
   try {
     // Validate input
@@ -22,8 +22,8 @@ const handlePostItem = async (request: Request): Promise<Response> => {
       item: z.string().min(1),
     }).safeParse(await request.json());
     if (itemResult.success) {
-      item = itemResult.data.item;
-      const addResult = await mealime.addItem(item);
+      query = itemResult.data.item;
+      const addResult = await mealime.addQuery(query);
       return new Response(addResult.result, { status: 200 });
     } else {
       return new Response(itemResult.error.toString(), { status: 400 });
@@ -39,7 +39,7 @@ const handlePostItem = async (request: Request): Promise<Response> => {
         await mealime.reset();
         // We know that the validation did not return an error,
         // so item is valid
-        const addResult = await mealime.addItem(item);
+        const addResult = await mealime.addQuery(query);
         return new Response(addResult.result, { status: 200 });
       } catch (resetError) {
         console.error("Reset didn't work", resetError);
