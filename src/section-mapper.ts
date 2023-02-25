@@ -81,7 +81,7 @@ const findSectionMatchesFor = (word: string) => {
  */
 export default (query: string) => {
   // Clean query
-  query = query.trim();
+  query = query.trim().toLowerCase();
 
   const queryWords = query.split(" ");
 
