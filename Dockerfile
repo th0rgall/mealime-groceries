@@ -23,7 +23,7 @@ CMD [ \
     "run",\
     "--allow-net=app.mealime.com,0.0.0.0:3000",\
     "--allow-env",\
-    "--allow-read=/app",\
-    "--allow-write=/app/cookiejar.json",\
-    "index.ts"\
+    "--allow-read=./",\
+    "--allow-write=./cookiejar.json",\
+    "src/index.ts"\
     ]

@@ -8,7 +8,7 @@
             "request": "launch",
             "name": "Launch Program",
             "type": "node",
-            "program": "${workspaceFolder}/index.ts",
+            "program": "${workspaceFolder}/src/index.ts",
             "cwd": "${workspaceFolder}",
             "runtimeExecutable": "deno",
             "runtimeArgs": [
@@ -18,7 +18,7 @@
                 "--allow-env",
                 "--allow-read=.",
                 "--allow-write=cookiejar.json",
-                "index.ts"
+                "src/index.ts"
             ],
             "attachSimplePort": 9229
         }
