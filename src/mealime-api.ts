@@ -18,7 +18,7 @@ export class CsrfError extends Error {
 }
 
 export const splitItems = (items: string) => {
-  return items.split(/,|and/).map((s) => s.trim());
+  return items.split(/,|\band\b|&/).map((s) => s.trim());
 };
 
 export default class MealimeAPI {
