@@ -1,7 +1,5 @@
 {
-  "imports": {
-    "std/": "https://deno.land/std@0.177.0/"
-  },
+  "importMap": "./import_map.json",
   "tasks": {
     "dev": "deno run --watch --allow-net=app.mealime.com,0.0.0.0:3000 --allow-env --allow-read=./ --allow-write=./cookiejar.json src/index.ts",
     "build:local": "docker build --platform linux/arm64/v8 -t thorgalle/mealime:latest .",
