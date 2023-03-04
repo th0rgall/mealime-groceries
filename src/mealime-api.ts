@@ -3,6 +3,8 @@ import { addCookies, CookieJar } from "./deps.ts";
 import { extendClient } from "./deps.ts";
 import sectionMapper from "./section-mapper.ts";
 
+const isDenoDeploy = Deno.env.get("DENO_DEPLOYMENT_ID") !== undefined;
+
 const fileName = "cookiejar.json";
 
 const baseURL = "https://app.mealime.com";
@@ -37,10 +39,14 @@ export default class MealimeAPI {
   }
 
   async saveCookieJar() {
-    await Deno.writeTextFile(
-      fileName,
-      JSON.stringify(cookieJar),
-    );
+    // Check file-writing capability, so deploys are possible in the
+    // constrained Deno Deploy environment https://deno.com/deploy/docs/runtime-fs
+    if (!isDenoDeploy) {
+      await Deno.writeTextFile(
+        fileName,
+        JSON.stringify(cookieJar),
+      );
+    }
   }
 
   csrfToken: string | undefined;
@@ -54,20 +60,8 @@ export default class MealimeAPI {
    */
   async login() {
     if (cookieJar == null) {
-      try {
-        // Try loading the cookie jar from disk
-        cookieJar = new CookieJar(JSON.parse(
-          await Deno.readTextFile(fileName),
-        ));
-        console.log("login: cookie jar found on disk, loaded");
-      } catch (error) {
-        if (error instanceof Deno.errors.NotFound) {
-          console.log("login: creating a new cookie jar");
-          cookieJar = new CookieJar();
-        } else {
-          throw new Error("login: unknown cookie jar loading error");
-        }
-      }
+      // Try loading the cookie jar from disk
+      await initializeCookieJar();
     }
     // Initialize/reset HTTP client
     client = extendClient({
@@ -256,5 +250,27 @@ export default class MealimeAPI {
     // clear cached headers etc.
     client = fetch;
     await this.login();
+  }
+}
+
+async function initializeCookieJar() {
+  console.log("login: initializing cookiejar");
+  if (isDenoDeploy) {
+    cookieJar = new CookieJar();
+    return;
+  }
+
+  try {
+    cookieJar = new CookieJar(JSON.parse(
+      await Deno.readTextFile(fileName),
+    ));
+    console.log("login: cookie jar found on disk, loaded");
+  } catch (error) {
+    if (error instanceof Deno.errors.NotFound) {
+      console.log("login: creating a new cookie jar");
+      cookieJar = new CookieJar();
+    } else {
+      throw new Error("login: unknown cookie jar loading error");
+    }
   }
 }
