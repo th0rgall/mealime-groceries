@@ -19,10 +19,10 @@ const productsBySectionNameZodSchema = z.object(
 ).strict();
 // Strict mode does not allow unrecognized keys
 
-export default () => {
+export default async () => {
   // Parse if unparsed yet
   const yamlDatabaseObject = parseYAML(
-    Deno.readTextFileSync("./src/products.yaml"),
+    await Deno.readTextFile("./src/products.yaml"),
   );
   return productsBySectionNameZodSchema.parse(yamlDatabaseObject);
 };

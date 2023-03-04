@@ -2,7 +2,7 @@ import { MEALIME_SECTIONS, MealimeSectionName } from "./constants.ts";
 import loadProducts from "./product-loader.ts";
 
 const productsBySectionId = Object.fromEntries(
-  Object.entries(loadProducts()).map((
+  Object.entries(await loadProducts()).map((
     [sectionName, products],
   ) => // the casts should work, because due to the .strict() option, sectionName must be a valid section.
   [MEALIME_SECTIONS[sectionName as MealimeSectionName], products]),
