@@ -10,7 +10,7 @@ WORKDIR /app
 COPY src/deps.ts ./src/
 # Also copy the config file, so the import maps are understood.
 # https://deno.land/manual@v1.30.3/examples/manage_dependencies
-COPY deno.jsonc ./ 
+COPY deno.jsonc import_map.json ./ 
 RUN deno cache src/deps.ts
 
 # Copy other source files
