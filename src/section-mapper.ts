@@ -56,7 +56,7 @@ export default (query: string) => {
   const singularWord = (word: string) =>
     word.endsWith("s") ? word.substring(0, query.length - 1) : word;
 
-  // Find exact matchess
+  // Find exact matches
   let candidateSections = findSectionMatchesFor(query);
 
   // Find singular query matches
